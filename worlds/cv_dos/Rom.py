@@ -12,6 +12,7 @@ from .modules.music_randomizer import area_music_randomizer, boss_music_randomiz
 from .modules.boss_randomizer import write_bosses
 from .modules.synthesis_randomizer import write_synthesis
 from .modules.bullet_wall_randomizer import apply_souls_and_gfx
+from .modules.enemy_randomizer import generate_enemy_mapping, write_enemies
 from Options import OptionError
 from .Options import StartingWeapon, SoulRandomizer, SoulsanityLevel, GateItems
 from .Items import soul_filler_table
@@ -84,6 +85,9 @@ class LocalRom(object):
 
     def read_direct(self, offset: int, length: int) -> bytes:
         return self.file[offset:offset + length]
+
+    def write_direct(self, offset: int, value: typing.Iterable[int]) -> None:
+        self.file[offset:offset + len(value)] = value
 
     def get_bytes(self) -> bytes:
         return bytes(self.file)
@@ -298,6 +302,14 @@ def patch_rom(world, rom, code_patch):
 
             rom.write_to_file(common_drop_address, "arm9", bytearray([common_item]))
             rom.write_to_file(rare_drop_address, "arm9", bytearray([rare_item]))
+
+    # Enemy Randomizer Integration
+    if world.options.randomize_enemies:
+        generate_enemy_mapping(world, 
+                               allow_bosses=world.options.allow_boss_swaps,
+                               preserve_resource_intensive=world.options.preserve_resource_intensive,
+                               debug_subset=world.options.enemy_randomizer_debug_subset)
+        write_enemies(world, rom, mode='full_swap', dry_run=False)
 
     write_synthesis(world, rom)
     write_seals(world, rom)
